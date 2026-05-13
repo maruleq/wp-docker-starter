@@ -1,0 +1,2 @@
+# php.ini is mounted as a volume at runtime — not needed in the build context
+php.ini

@@ -1,0 +1,113 @@
+services:
+
+  # ─── WordPress + Apache ───────────────────────────────────────────────────
+  wordpress:
+    build:
+      context: ./docker/php
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.4}
+        HOST_UID: ${HOST_UID:-1000}
+    container_name: ${PROJECT_NAME}-wordpress
+    ports:
+      - "${WP_PORT:-80}:80"
+    volumes:
+      - ./wordpress:/var/www/html:cached
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+    environment:
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wordpress_secret}
+      WORDPRESS_TABLE_PREFIX: ${WP_TABLE_PREFIX:-wp_}
+      WORDPRESS_DEBUG: ${WP_DEBUG:-false}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_SITEURL', 'http://${WP_DOMAIN:-localhost}:${WP_PORT:-80}');
+        define('WP_HOME',    'http://${WP_DOMAIN:-localhost}:${WP_PORT:-80}');
+        define('WP_MEMORY_LIMIT',     '${PHP_MEMORY_LIMIT:-256M}');
+        define('WP_MAX_MEMORY_LIMIT', '${WP_MAX_MEMORY_LIMIT:-512M}');
+        define('FS_METHOD', 'direct');
+        define('WP_POST_REVISIONS', 10);
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - wp-network
+
+  # ─── MySQL 8 — database ────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.4.9
+    container_name: ${PROJECT_NAME}-mysql
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
+      MYSQL_DATABASE: ${DB_NAME:-wordpress}
+      MYSQL_USER: ${DB_USER:-wordpress}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-wordpress_secret}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - wp-network
+
+  # ─── phpMyAdmin ───────────────────────────────────────────────────────────
+  phpmyadmin:
+    image: phpmyadmin:5.2.3
+    container_name: ${PROJECT_NAME}-phpmyadmin
+    ports:
+      - "${PMA_PORT:-8080}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
+      UPLOAD_LIMIT: 100M
+      MAX_EXECUTION_TIME: 300
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - wp-network
+
+  # ─── Mailpit — email testing ───────────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:v1.29
+    container_name: ${PROJECT_NAME}-mailpit
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_DATA_FILE: /data/mailpit.db
+    volumes:
+      - mailpit_data:/data
+    restart: unless-stopped
+    networks:
+      - wp-network
+
+# ─── Volumes ─────────────────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local
+  mailpit_data:
+    driver: local
+
+# ─── Network ─────────────────────────────────────────────────────────────────────
+networks:
+  wp-network:
+    driver: bridge
