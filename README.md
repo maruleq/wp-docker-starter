@@ -27,7 +27,7 @@
 | **WordPress**  | `wordpress:php8.4-apache`       | Apache + PHP + WP-CLI + Xdebug   |
 | **MySQL**      | `mysql:8.4.9`                   | Database                         |
 | **phpMyAdmin** | `phpmyadmin:5.2.3`              | Database GUI                     |
-| **Mailpit**    | `axllent/mailpit:v1.29`         | SMTP catch-all + web UI          |
+| **Mailpit**    | `axllent/mailpit:v1.29.7`       | SMTP catch-all + web UI          |
 
 ## Requirements
 

@@ -86,7 +86,7 @@ services:
 
   # ─── Mailpit — email testing ───────────────────────────────────────────────────
   mailpit:
-    image: axllent/mailpit:v1.29
+    image: axllent/mailpit:v1.29.7
     container_name: ${PROJECT_NAME}-mailpit
     ports:
       - "${MAILPIT_UI_PORT:-8025}:8025"
