@@ -16,6 +16,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get purge -y --auto-remove ${PHPIZE_DEPS} \
     && rm -rf /var/lib/apt/lists/* /tmp/pear
 
+# ─── Fix: WORDPRESS_DEBUG="false" turns debugging ON ────────────────────────────
+# The official image builds the constant as !!getenv_docker('WORDPRESS_DEBUG', '').
+# In PHP the non-empty string "false" is truthy, so WP_DEBUG=false in .env still
+# enables debug mode: every request logs deprecation notices and, with
+# display_errors on, prints them before <!DOCTYPE>, which breaks page rendering.
+# The entrypoint copies this file to wp-config.php on first start, so patching it
+# here fixes every project created from this template.
+# The grep guards make the build fail loudly if upstream changes that line.
+RUN set -eux; \
+    f=/usr/src/wordpress/wp-config-docker.php; \
+    grep -q "!!getenv_docker('WORDPRESS_DEBUG', '')" "$f"; \
+    sed -i "s|!!getenv_docker('WORDPRESS_DEBUG', '')|filter_var( getenv_docker('WORDPRESS_DEBUG', ''), FILTER_VALIDATE_BOOLEAN )|" "$f"; \
+    grep -q 'FILTER_VALIDATE_BOOLEAN' "$f"
+
 # ─── Apache mod_rewrite (required by WordPress) ─────────────────────────────────
 RUN a2enmod rewrite
 
