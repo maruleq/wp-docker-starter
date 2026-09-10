@@ -170,6 +170,8 @@ wp-docker-starter/
 ├── README.pl.md                # Polish version
 ├── docker-compose.yml
 └── docker/
+    ├── apache/
+    │   └── loopback.conf       # Apache also listens on WP_PORT (WP-Cron, Site Health)
     ├── php/
     │   ├── .dockerignore       # Excludes php.ini from build context
     │   ├── Dockerfile          # Apache + PHP + WP-CLI + Xdebug image

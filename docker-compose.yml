@@ -12,8 +12,15 @@ services:
       - "${WP_PORT:-80}:80"
     volumes:
       - ./wordpress:/var/www/html:cached
-      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+      # The zz- prefix matters: conf.d files are parsed alphabetically and the base
+      # image ships error-logging.ini and opcache-recommended.ini. Named 99-custom.ini,
+      # this file's error and OPcache settings were silently overridden by the image.
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/zz-custom.ini:ro
+      # Apache must also listen on WP_PORT or WordPress loopback requests fail.
+      - ./docker/apache/loopback.conf:/etc/apache2/conf-enabled/zz-loopback.conf:ro
     environment:
+      # Passed through to Apache, which reads it in docker/apache/loopback.conf
+      WP_PORT: ${WP_PORT:-80}
       WORDPRESS_DB_HOST: mysql:3306
       WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
       WORDPRESS_DB_USER: ${DB_USER:-wordpress}
